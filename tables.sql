@@ -137,8 +137,8 @@ CREATE TABLE But (
 
 CREATE TABLE Ligue (
     LigueID SMALLINT,
-    ProgrammeID SMALLINT,
-    NomLigue VARCHAR(50),
+    ProgrammeID SMALLINT NOT NULL,
+    NomLigue VARCHAR(50) NOT NULL,
     Description VARCHAR(255),
     CONSTRAINT pk_ligue PRIMARY KEY(LigueID),
     CONSTRAINT fk_ligue_programme FOREIGN KEY (ProgrammeID) REFERENCES Programme(ProgrammeID)
