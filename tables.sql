@@ -2,24 +2,14 @@ use master;
 -------------------------------Creation de la base de donnees-------------------------------
 IF EXISTS (SELECT name FROM master..sysdatabases WHERE name = 'ASG_24')
     DROP DATABASE ASG_24;
+go
 
 CREATE DATABASE ASG_24;
+go
 
 USE ASG_24;
+go
 -------------------------------Creation des tables-------------------------------
-CREATE TABLE Joueur (
-    JoueurID SMALLINT,
-    EquipeID TINYINT NOT NULL,
-    TuteurID SMALLINT NOT NULL,
-    Nom VARCHAR(50) NOT NULL,
-    Prenom VARCHAR(50) NOT NULL,
-    DateDeNaissance DATE NOT NULL,
-    Position VARCHAR(50),
-    CONSTRAINT pk_joueur PRIMARY KEY(JoueurID),
-    CONSTRAINT fk_joueur_equipe FOREIGN KEY (EquipeID) REFERENCES Equipe(EquipeID),
-    CONSTRAINT fk_joueur_tuteur FOREIGN KEY (TuteurID) REFERENCES Tuteur(TuteurID)
-);
-
 CREATE TABLE Tuteur (
     TuteurID SMALLINT,
     Nom VARCHAR(50) NOT NULL,
@@ -31,6 +21,30 @@ CREATE TABLE Tuteur (
     CONSTRAINT ck_tuteur_telephone CHECK(Telephone LIKE '[0-9][0-9][0-9]-[0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]') -- Format du telephone
 );
 
+
+CREATE TABLE Programme (
+    ProgrammeID TINYINT,
+    Niveau VARCHAR(10), -- Local, Competitif
+    Saison VARCHAR(10) NOT NULL, -- Hiver, Ete, Automne, Printemps
+    NomProgramme VARCHAR(50) NOT NULL, 
+    AgeMin TINYINT NOT NULL, -- Age minimum pour le programme
+    AgeMax TINYINT, -- Age maximum pour le programme (NULL pour senior)
+    CONSTRAINT pk_programme PRIMARY KEY(ProgrammeID),
+    CONSTRAINT uq_programme UNIQUE(Niveau, Saison, AgeMin, AgeMax), -- Un programme ne peut pas avoir les memes valeurs pour Niveau, Saison, AgeMin et AgeMax qu'un autre programme
+    CONSTRAINT ck_age CHECK (AgeMin <= AgeMax), -- AgeMin doit etre inferieur ou egal a AgeMax
+    CONSTRAINT ck_saison CHECK(Saison IN ('Hiver', 'Ete', 'Automne', 'Printemps')), -- Saison doit etre un des 4 choix possibles
+    CONSTRAINT ck_niveau CHECK(Niveau IN ('Local', 'Competitif')) -- Niveau doit etre un des 2 choix possibles
+);
+
+CREATE TABLE Ligue (
+    LigueID SMALLINT,
+    ProgrammeID TINYINT NOT NULL,
+    NomLigue VARCHAR(50) NOT NULL,
+    Description VARCHAR(255),
+    CONSTRAINT pk_ligue PRIMARY KEY(LigueID),
+    CONSTRAINT fk_ligue_programme FOREIGN KEY (ProgrammeID) REFERENCES Programme(ProgrammeID)
+);
+
 CREATE TABLE Entraineur (
     EntraineurID TINYINT,
     EquipeID TINYINT NULL,
@@ -40,7 +54,6 @@ CREATE TABLE Entraineur (
     Telephone CHAR(20) NOT NULL, -- Numero de telephone fixe
     NAS CHAR(11) UNIQUE NOT NULL, -- Numero d'assurance sociale fixe
     CONSTRAINT pk_entraineur PRIMARY KEY(EntraineurID),
-    CONSTRAINT fk_entraineur_equipe FOREIGN KEY (EquipeID) REFERENCES Equipe(EquipeID),
     CONSTRAINT ck_entraineur_nas CHECK(NAS LIKE '[0-9][0-9][0-9]-[0-9][0-9][0-9]-[0-9][0-9][0-9]'), -- Format du NAS
     CONSTRAINT ck_entraineur_telephone CHECK(Telephone LIKE '[0-9][0-9][0-9]-[0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]') -- Format du telephone
 );
@@ -56,6 +69,22 @@ CREATE TABLE Equipe (
     CONSTRAINT fk_equipe_ligue FOREIGN KEY (LigueID) REFERENCES Ligue(LigueID)
 );
 
+ALTER TABLE Entraineur
+ADD CONSTRAINT fk_entraineur_equipe FOREIGN KEY (EquipeID) REFERENCES Equipe(EquipeID); -- Ajout de la contrainte de cle etrangere (probleme de dependance circulaire)
+
+CREATE TABLE Joueur (
+    JoueurID SMALLINT,
+    EquipeID TINYINT NOT NULL,
+    TuteurID SMALLINT NOT NULL,
+    Nom VARCHAR(50) NOT NULL,
+    Prenom VARCHAR(50) NOT NULL,
+    DateDeNaissance DATE NOT NULL,
+    Position VARCHAR(50),
+    CONSTRAINT pk_joueur PRIMARY KEY(JoueurID),
+    CONSTRAINT fk_joueur_equipe FOREIGN KEY (EquipeID) REFERENCES Equipe(EquipeID),
+    CONSTRAINT fk_joueur_tuteur FOREIGN KEY (TuteurID) REFERENCES Tuteur(TuteurID)
+);
+
 CREATE TABLE Terrain (
     TerrainID TINYINT,
     Type VARCHAR(50) NOT NULL,
@@ -63,18 +92,15 @@ CREATE TABLE Terrain (
     CONSTRAINT pk_terrain PRIMARY KEY(TerrainID)
 );
 
-CREATE TABLE Programme (
-    ProgrammeID TINYINT,
-    Niveau VARCHAR(10), -- Local, Competitif
-    Saison VARCHAR(10) NOT NULL, -- Hiver, Ete, Automne, Printemps
-    NomProgramme VARCHAR(50) NOT NULL, 
-    AgeMin TINYINT NOT NULL, -- Age minimum pour le programme
-    AgeMax TINYINT, -- Age maximum pour le programme (NULL pour senior)
-    CONSTRAINT pk_programme PRIMARY KEY(ProgrammeID),
-    CONSTRAINT uq_programme UNIQUE(Niveau, Saison, AgeMin, AgeMax), -- Un programme ne peut pas avoir les memes valeurs pour Niveau, Saison, AgeMin et AgeMax qu'un autre programme
-    CONSTRAINT ck_age CHECK (AgeMin <= AgeMax), -- AgeMin doit etre inferieur ou egal a AgeMax
-    CONSTRAINT ck_saison CHECK(Saison IN ('Hiver', 'Ete', 'Automne', 'Printemps')), -- Saison doit etre un des 4 choix possibles
-    CONSTRAINT ck_niveau CHECK(Niveau IN ('Local', 'Competitif')) -- Niveau doit etre un des 2 choix possibles
+CREATE TABLE Arbitre (
+    ArbitreID TINYINT,
+    Nom VARCHAR(50) NOT NULL,
+    Prenom VARCHAR(50) NOT NULL,
+    Telephone VARCHAR(20) NOT NULL,
+    NAS CHAR(11) UNIQUE NOT NULL, -- Numero d'assurance sociale fixe
+    Email VARCHAR(100) UNIQUE NOT NULL,
+    CONSTRAINT pk_arbitre PRIMARY KEY(ArbitreID),
+    CONSTRAINT ck_arbitre_nas CHECK(NAS LIKE '[0-9][0-9][0-9]-[0-9][0-9][0-9]-[0-9][0-9][0-9]') -- Format du NAS
 );
 
 CREATE TABLE Match (
@@ -95,19 +121,11 @@ CREATE TABLE Match (
     CONSTRAINT uq_match_terrain_temps UNIQUE(TerrainID, TempsDebut), -- Un terrain ne peut pas etre utilise pour deux matchs en meme temps
     CONSTRAINT ck_match_statut CHECK(Statut IN ('Planifie', 'EnCours', 'Termine', 'Annule')), -- Statut doit etre un des 4 choix possibles
     CONSTRAINT ck_match_equipes CHECK(EquipeDomicileID != EquipeExterieurID), -- Equipe domicile et equipe exterieur doivent etre differentes
-    CONSTRAINT ck_match_temps CHECK(IF Statut = 'Planifie' THEN TempsDebut > NOW() ELSE IF Statut = 'EnCours' THEN TempsDebut <= NOW() ELSE TRUE), -- TempsDebut doit etre dans le futur si le match est planifie, dans le passe si le match est en cours, et n'importe quand si le match est termine ou annule
+    CONSTRAINT ck_match_temps CHECK (
+    (Statut = 'Planifie' AND TempsDebut > GETDATE()) OR 
+    (Statut = 'EnCours' AND TempsDebut <= GETDATE()) OR 
+    (Statut <> 'Planifie' AND Statut <> 'EnCours')) -- TempsDebut doit etre dans le futur si le match est planifie, dans le passe si le match est en cours, et n'importe quand si le match est termine ou annule
 
-);
-
-CREATE TABLE Arbitre (
-    ArbitreID TINYINT,
-    Nom VARCHAR(50) NOT NULL,
-    Prenom VARCHAR(50) NOT NULL,
-    Telephone VARCHAR(20) NOT NULL,
-    NAS CHAR(11) UNIQUE NOT NULL, -- Numero d'assurance sociale fixe
-    Email VARCHAR(100) UNIQUE NOT NULL,
-    CONSTRAINT pk_arbitre PRIMARY KEY(ArbitreID),
-    CONSTRAINT ck_arbitre_nas CHECK(NAS LIKE '[0-9][0-9][0-9]-[0-9][0-9][0-9]-[0-9][0-9][0-9]') -- Format du NAS
 );
 
 CREATE TABLE Pratique (
@@ -120,7 +138,11 @@ CREATE TABLE Pratique (
     CONSTRAINT fk_pratique_equipe FOREIGN KEY (EquipeID) REFERENCES Equipe(EquipeID),
     CONSTRAINT fk_pratique_terrain FOREIGN KEY (TerrainID) REFERENCES Terrain(TerrainID),
     CONSTRAINT ck_pratique_statut CHECK(Statut IN ('Planifie', 'EnCours', 'Termine', 'Annule')), -- Statut doit etre un des 4 choix possibles
-    CONSTRAINT ck_pratique_temps CHECK(IF Statut = 'Planifie' THEN TempsDebut > NOW() ELSE IF Statut = 'EnCours' THEN TempsDebut <= NOW() ELSE TRUE) -- TempsDebut doit etre dans le futur si la pratique est planifiee, dans le passe si la pratique est en cours, et n'importe quand si la pratique est terminee ou annulee
+    CONSTRAINT ck_pratique_temps CHECK (
+    (Statut = 'Planifie' AND TempsDebut > GETDATE()) OR 
+    (Statut = 'EnCours' AND TempsDebut <= GETDATE()) OR 
+    (Statut = 'Termine' AND TempsDebut < GETDATE()) OR 
+    (Statut = 'Annule' AND TempsDebut < GETDATE())) -- TempsDebut doit etre dans le futur si la pratique est planifiee, dans le passe si la pratique est en cours, et n'importe quand si la pratique est terminee ou annulee
 );
 
 CREATE TABLE But (
@@ -135,14 +157,12 @@ CREATE TABLE But (
     CONSTRAINT fk_but_match FOREIGN KEY (MatchID) REFERENCES Match(MatchID)
 );
 
-CREATE TABLE Ligue (
-    LigueID SMALLINT,
-    ProgrammeID SMALLINT NOT NULL,
-    NomLigue VARCHAR(50) NOT NULL,
-    Description VARCHAR(255),
-    CONSTRAINT pk_ligue PRIMARY KEY(LigueID),
-    CONSTRAINT fk_ligue_programme FOREIGN KEY (ProgrammeID) REFERENCES Programme(ProgrammeID)
-);
+
 
 ---------------------------------------------------------Creation des index---------------------------------------------------------
+
+---------------------------------------------------------Effacement de la base de donnees---------------------------------------------------------
+USE master;
+IF EXISTS (SELECT name FROM master..sysdatabases WHERE name = 'ASG_24')
+    DROP DATABASE ASG_24;
 
