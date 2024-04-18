@@ -85,6 +85,7 @@ CREATE TABLE Joueur (
     CONSTRAINT fk_joueur_tuteur FOREIGN KEY (TuteurID) REFERENCES Tuteur(TuteurID)
 );
 
+
 CREATE TABLE Terrain (
     TerrainID TINYINT,
     Type VARCHAR(50) NOT NULL,
@@ -157,12 +158,53 @@ CREATE TABLE But (
     CONSTRAINT fk_but_match FOREIGN KEY (MatchID) REFERENCES Match(MatchID)
 );
 
+---------------------------------------------------------Triggers---------------------------------------------------------
+GO
+/* Trigger pour verifier que la date de naissance du joueur le rend eligible pour le programme de l'equipe */
+CREATE TRIGGER tr_joueur_date_naissance 
+ON Joueur
+FOR INSERT, UPDATE AS
+BEGIN
+    DECLARE @LigueID SMALLINT;
+    DECLARE @JoueurDateNaissance DATE;
+    DECLARE @JoueurID SMALLINT;
+    DECLARE @EquipeID TINYINT;
+    DECLARE @AgeMin TINYINT;
+    DECLARE @AgeMax TINYINT;
+    DECLARE @ProgrammeID TINYINT;
+    DECLARE @Age INT;
 
+    DECLARE cur CURSOR FOR SELECT JoueurID, EquipeID, DateDeNaissance FROM inserted;
+    OPEN cur;
+
+    FETCH NEXT FROM cur INTO @JoueurID, @EquipeID, @JoueurDateNaissance;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        SELECT @LigueID = LigueID FROM Equipe WHERE EquipeID = @EquipeID;
+        SELECT @ProgrammeID = ProgrammeID FROM Ligue WHERE LigueID = @LigueID;
+        SELECT @AgeMin = AgeMin, @AgeMax = AgeMax FROM Programme WHERE ProgrammeID = @ProgrammeID;
+
+        SELECT @Age = DATEDIFF(YEAR, @JoueurDateNaissance, GETDATE());
+
+        IF @Age < @AgeMin OR (@AgeMax IS NOT NULL AND @Age > @AgeMax)
+        BEGIN
+            RAISERROR('Le joueur ne respecte pas les criteres d''age du programme', 16, 1);
+            ROLLBACK TRANSACTION;
+        END
+
+        FETCH NEXT FROM cur INTO @JoueurID, @EquipeID, @JoueurDateNaissance;
+    END
+
+    CLOSE cur;
+    DEALLOCATE cur;
+END;
+GO
 
 ---------------------------------------------------------Creation des index---------------------------------------------------------
 
 ---------------------------------------------------------Effacement de la base de donnees---------------------------------------------------------
-USE master;
-IF EXISTS (SELECT name FROM master..sysdatabases WHERE name = 'ASG_24')
-    DROP DATABASE ASG_24;
+-- USE master;
+-- IF EXISTS (SELECT name FROM master..sysdatabases WHERE name = 'ASG_24')
+--     DROP DATABASE ASG_24;
 
