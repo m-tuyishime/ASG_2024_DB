@@ -1,4 +1,5 @@
 use master;
+GO
 -------------------------------Creation de la base de donnees-------------------------------
 IF EXISTS (SELECT name FROM master..sysdatabases WHERE name = 'ASG_24')
     DROP DATABASE ASG_24;
@@ -30,7 +31,7 @@ CREATE TABLE Programme (
     AgeMin TINYINT NOT NULL, -- Age minimum pour le programme
     AgeMax TINYINT, -- Age maximum pour le programme (NULL pour senior)
     CONSTRAINT pk_programme PRIMARY KEY(ProgrammeID),
-    CONSTRAINT uq_programme UNIQUE(Niveau, Saison, AgeMin, AgeMax), -- Un programme ne peut pas avoir les memes valeurs pour Niveau, Saison, AgeMin et AgeMax qu'un autre programme
+    CONSTRAINT uq_programme UNIQUE(Niveau, Saison, AgeMin, AgeMax), -- Un programme ne peut pas avoir la meme combinaison de valeurs pour Niveau, Saison, AgeMin et AgeMax qu'un autre programme
     CONSTRAINT ck_age CHECK (AgeMin <= AgeMax), -- AgeMin doit etre inferieur ou egal a AgeMax
     CONSTRAINT ck_saison CHECK(Saison IN ('Hiver', 'Ete', 'Automne', 'Printemps')), -- Saison doit etre un des 4 choix possibles
     CONSTRAINT ck_niveau CHECK(Niveau IN ('Local', 'Competitif')) -- Niveau doit etre un des 2 choix possibles
@@ -158,6 +159,8 @@ CREATE TABLE But (
     CONSTRAINT fk_but_match FOREIGN KEY (MatchID) REFERENCES Match(MatchID)
 );
 
+---------------------------------------------------------Creation des indexes---------------------------------------------------------
+
 ---------------------------------------------------------Triggers---------------------------------------------------------
 GO
 /* Trigger pour verifier que la date de naissance du joueur le rend eligible pour le programme de l'equipe */
@@ -200,11 +203,73 @@ BEGIN
     DEALLOCATE cur;
 END;
 GO
+---------------------------------------------------------Creation de procedures stockees---------------------------------------------------------
+GO
+/* Procedure stockee pour obtenir le meilleur buteur d'un programme */
+CREATE PROCEDURE sp_meilleur_buteur_programme
+    @ProgrammeID TINYINT
+AS
+BEGIN
+    SELECT TOP 1 J.Nom, J.Prenom, COUNT(B.ButID) AS NbButs
+    FROM Joueur J
+    JOIN But B ON J.JoueurID = B.ButJoueurID
+    JOIN Equipe E ON J.EquipeID = E.EquipeID
+    JOIN Ligue L ON E.LigueID = L.LigueID
+    WHERE L.ProgrammeID = @ProgrammeID
+    GROUP BY J.Nom, J.Prenom
+    ORDER BY NbButs DESC;
+END;
+GO
+/* Procedure stockee pour obtenir la moyenne de buts par match d'une equipe */
+CREATE PROCEDURE sp_moyenne_buts_equipe
+    @EquipeID TINYINT
+AS
+BEGIN
+    SELECT AVG(NbButs) AS MoyenneButs
+    FROM (
+        SELECT COUNT(ButID) AS NbButs
+        FROM But
+        WHERE ButJoueurID IN (SELECT JoueurID FROM Joueur WHERE EquipeID = @EquipeID)
+        GROUP BY MatchID
+    ) AS ButsParMatch;
+END;
+GO
 
----------------------------------------------------------Creation des index---------------------------------------------------------
+---------------------------------------------------------Creation de vues---------------------------------------------------------
+GO 
+/* Vue de tous les defenseurs */
+CREATE VIEW vue_defenseurs AS
+SELECT J.Nom, J.Prenom, J.Position
+FROM Joueur J
+WHERE J.Position = 'Defenseur';
+GO
+
+/* Vue pour obtenir les buteurs d'un programme en haut de la moyenne de buts par match */
+CREATE VIEW vue_buteurs_programme AS
+SELECT J.Nom, J.Prenom, COUNT(B.ButID) AS NbButs
+FROM Joueur J
+JOIN But B ON J.JoueurID = B.ButJoueurID
+JOIN Equipe E ON J.EquipeID = E.EquipeID
+JOIN Ligue L ON E.LigueID = L.LigueID
+GROUP BY J.JoueurID, J.Nom, J.Prenom
+HAVING COUNT(B.ButID) > (SELECT AVG(NbButs) FROM (
+    SELECT COUNT(ButID) AS NbButs
+    FROM But
+    WHERE ButJoueurID = J.JoueurID
+    GROUP BY MatchID
+) AS ButsParMatch);
+GO
+
+/* Vue pour obtenir les entraineurs sans equipe */
+CREATE VIEW vue_entraineurs_sans_equipe AS
+SELECT E.Nom, E.Prenom, E.Email
+FROM Entraineur E
+WHERE E.EquipeID IS NULL;
+GO
 
 ---------------------------------------------------------Effacement de la base de donnees---------------------------------------------------------
--- USE master;
+USE master;
+go
 -- IF EXISTS (SELECT name FROM master..sysdatabases WHERE name = 'ASG_24')
 --     DROP DATABASE ASG_24;
 
