@@ -381,7 +381,7 @@ SELECT J.Nom, J.Prenom, J.Position, E.Nom AS NomEquipe, L.NomLigue
 FROM Joueur J
 JOIN Equipe E ON J.EquipeID = E.EquipeID
 JOIN Ligue L ON E.LigueID = L.LigueID
-WHERE J.Position = 'Attaquant' AND L.NomLigue = 'Ligue1' -- Selection des attaquants de la ligue 'Ligue1'
+WHERE J.Position = 'Attaquant' AND L.NomLigue = 'Ligue1' -- Selection des ataquants de la ligue 'Ligue1'
 
 SELECT J.Nom, J.Prenom, J.Position, E.Nom AS NomEquipe, L.NomLigue
 FROM Joueur J
