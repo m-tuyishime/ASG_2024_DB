@@ -354,6 +354,40 @@ ADD DateDebut DATE NOT NULL; -- Ajout de la colonne DateDebut
 
 -- Delete from tuteur where DateNaissance <= DATEADD(Year, -18, getdate())
 
+---------------------------------------------------------Selection des donnees (une table)---------------------------------------------------------
+SELECT * FROM Joueur
+SELECT * FROM Tuteur
+SELECT * FROM Programme
+
+---------------------------------------------------------Selection des donnees (jointure & condition)---------------------------------------------------------
+SELECT J.Nom, J.Prenom, J.Position, E.Nom AS NomEquipe
+FROM Joueur J
+JOIN Equipe E ON J.EquipeID = E.EquipeID
+WHERE E.Nom = 'Equipe1' -- Selection des joueurs de l'equipe 'Equipe1'
+
+SELECT J.Nom, J.Prenom, J.Position, E.Nom AS NomEquipe
+FROM Joueur J
+JOIN Equipe E ON J.EquipeID = E.EquipeID
+WHERE J.Position = 'Attaquant' -- Selection des attaquants
+
+
+SELECT J.Nom, J.Prenom, J.Position, E.Nom AS NomEquipe
+FROM Joueur J
+JOIN Equipe E ON J.EquipeID = E.EquipeID
+WHERE J.Position = 'Attaquant' AND E.Nom = 'Equipe1' -- Selection des attaquants de l'equipe 'Equipe1'
+
+---------------------------------------------------------Selection des donnees (deux jointures & conditions)---------------------------------------------------------
+SELECT J.Nom, J.Prenom, J.Position, E.Nom AS NomEquipe, L.NomLigue
+FROM Joueur J
+JOIN Equipe E ON J.EquipeID = E.EquipeID
+JOIN Ligue L ON E.LigueID = L.LigueID
+WHERE J.Position = 'Attaquant' AND L.NomLigue = 'Ligue1' -- Selection des attaquants de la ligue 'Ligue1'
+
+SELECT J.Nom, J.Prenom, J.Position, E.Nom AS NomEquipe, L.NomLigue
+FROM Joueur J
+JOIN Equipe E ON J.EquipeID = E.EquipeID
+JOIN Ligue L ON E.LigueID = L.LigueID
+WHERE J.Position = 'Attaquant' AND L.NomLigue = 'Ligue1' AND E.Nom = 'Equipe1' -- Selection des attaquants de l'equipe 'Equipe1' de la ligue 'Ligue1'
 
 
 ---------------------------------------------------------Effacement de la base de donnees---------------------------------------------------------
