@@ -43,7 +43,7 @@ CREATE TABLE Ligue (
     NomLigue VARCHAR(50) NOT NULL,
     Description VARCHAR(255),
     CONSTRAINT pk_ligue PRIMARY KEY(LigueID),
-    CONSTRAINT fk_ligue_programme FOREIGN KEY (ProgrammeID) REFERENCES Programme(ProgrammeID)
+    CONSTRAINT fk_ligue_programme FOREIGN KEY (ProgrammeID) REFERENCES Programme(ProgrammeID) ON DELETE CASCADE
 );
 
 CREATE TABLE Entraineur (
@@ -66,8 +66,8 @@ CREATE TABLE Equipe (
     Nom VARCHAR(50) NOT NULL,
     Classement TINYINT UNIQUE NOT NULL,
     CONSTRAINT pk_equipe PRIMARY KEY(EquipeID),
-    CONSTRAINT fk_equipe_entraineur FOREIGN KEY (EntraineurID) REFERENCES Entraineur(EntraineurID),
-    CONSTRAINT fk_equipe_ligue FOREIGN KEY (LigueID) REFERENCES Ligue(LigueID)
+    CONSTRAINT fk_equipe_entraineur FOREIGN KEY (EntraineurID) REFERENCES Entraineur(EntraineurID) ON DELETE CASCADE,
+    CONSTRAINT fk_equipe_ligue FOREIGN KEY (LigueID) REFERENCES Ligue(LigueID) ON DELETE CASCADE
 );
 
 ALTER TABLE Entraineur
@@ -82,8 +82,8 @@ CREATE TABLE Joueur (
     DateDeNaissance DATE NOT NULL,
     Position VARCHAR(50),
     CONSTRAINT pk_joueur PRIMARY KEY(JoueurID),
-    CONSTRAINT fk_joueur_equipe FOREIGN KEY (EquipeID) REFERENCES Equipe(EquipeID),
-    CONSTRAINT fk_joueur_tuteur FOREIGN KEY (TuteurID) REFERENCES Tuteur(TuteurID)
+    CONSTRAINT fk_joueur_equipe FOREIGN KEY (EquipeID) REFERENCES Equipe(EquipeID) ON DELETE CASCADE,
+    CONSTRAINT fk_joueur_tuteur FOREIGN KEY (TuteurID) REFERENCES Tuteur(TuteurID) ON DELETE CASCADE
 );
 
 
@@ -114,10 +114,10 @@ CREATE TABLE Match (
     TempsDebut DateTime NOT NULL,
     Statut VARCHAR(10) NOT NULL, -- Planifie, EnCours, Termine, Annule
     CONSTRAINT pk_match PRIMARY KEY(MatchID), 
-    CONSTRAINT fk_match_equipedomicile FOREIGN KEY (EquipeDomicileID) REFERENCES Equipe(EquipeID),
+    CONSTRAINT fk_match_equipedomicile FOREIGN KEY (EquipeDomicileID) REFERENCES Equipe(EquipeID) ON DELETE CASCADE,
     CONSTRAINT fk_match_equipeexterieur FOREIGN KEY (EquipeExterieurID) REFERENCES Equipe(EquipeID),
-    CONSTRAINT fk_match_arbitre FOREIGN KEY (ArbitreID) REFERENCES Arbitre(ArbitreID),
-    CONSTRAINT fk_match_terrain FOREIGN KEY (TerrainID) REFERENCES Terrain(TerrainID),
+    CONSTRAINT fk_match_arbitre FOREIGN KEY (ArbitreID) REFERENCES Arbitre(ArbitreID) ON DELETE CASCADE,
+    CONSTRAINT fk_match_terrain FOREIGN KEY (TerrainID) REFERENCES Terrain(TerrainID) ON DELETE CASCADE,
     CONSTRAINT uq_match_equipes_temps UNIQUE(EquipeDomicileID, EquipeExterieurID, TempsDebut), -- Un match ne peut pas avoir les memes equipes et le meme temps de debut qu'un autre match
     CONSTRAINT uq_match_arbitre_temps UNIQUE(ArbitreID, TempsDebut), -- Un arbitre ne peut pas etre assigne a deux matchs en meme temps
     CONSTRAINT uq_match_terrain_temps UNIQUE(TerrainID, TempsDebut), -- Un terrain ne peut pas etre utilise pour deux matchs en meme temps
@@ -137,8 +137,8 @@ CREATE TABLE Pratique (
     Statut VARCHAR(10) NOT NULL, -- Planifie, EnCours, Termine, Annule
     TempsDebut DateTime,
     CONSTRAINT pk_pratique PRIMARY KEY(PratiqueID),
-    CONSTRAINT fk_pratique_equipe FOREIGN KEY (EquipeID) REFERENCES Equipe(EquipeID),
-    CONSTRAINT fk_pratique_terrain FOREIGN KEY (TerrainID) REFERENCES Terrain(TerrainID),
+    CONSTRAINT fk_pratique_equipe FOREIGN KEY (EquipeID) REFERENCES Equipe(EquipeID) ON DELETE CASCADE,
+    CONSTRAINT fk_pratique_terrain FOREIGN KEY (TerrainID) REFERENCES Terrain(TerrainID) ON DELETE CASCADE,
     CONSTRAINT ck_pratique_statut CHECK(Statut IN ('Planifie', 'EnCours', 'Termine', 'Annule')), -- Statut doit etre un des 4 choix possibles
     CONSTRAINT ck_pratique_temps CHECK (
     (Statut = 'Planifie' AND TempsDebut > GETDATE()) OR 
@@ -154,9 +154,9 @@ CREATE TABLE But (
     MatchID INT NOT NULL,
     Temps DATETIME NOT NULL,
     CONSTRAINT pk_but PRIMARY KEY(ButID),
-    CONSTRAINT fk_but_butjoueur FOREIGN KEY (ButJoueurID) REFERENCES Joueur(JoueurID),
+    CONSTRAINT fk_but_butjoueur FOREIGN KEY (ButJoueurID) REFERENCES Joueur(JoueurID) ON DELETE CASCADE,
     CONSTRAINT fk_but_assistjoueur FOREIGN KEY (AssistJoueurID) REFERENCES Joueur(JoueurID),
-    CONSTRAINT fk_but_match FOREIGN KEY (MatchID) REFERENCES Match(MatchID)
+    CONSTRAINT fk_but_match FOREIGN KEY (MatchID) REFERENCES Match(MatchID) 
 );
 
 ---------------------------------------------------------Creation des indexes---------------------------------------------------------
@@ -266,6 +266,95 @@ SELECT E.Nom, E.Prenom, E.Email
 FROM Entraineur E
 WHERE E.EquipeID IS NULL;
 GO
+
+---------------------------------------------------------Mis à jour des données---------------------------------------------------------
+UPDATE Joueur SET Position = 'Centre' WHERE Position = 'Midfielder';
+
+Update Programme SET Saison = 'Ete' where Saison = 'Printemps' 
+
+DELETE FROM Arbitre WHERE Email Not LIKE '%@%'
+
+DELETE FROM Joueur WHERE DateDeNaissance < '2000-01-01';
+
+DELETE FROM But WHERE Temps < GETDATE();
+
+DELETE FROM Terrain WHERE Type not In ('Intérieur' , 'Extérieur')
+
+Delete From Joueur Where Prenom = Nom
+
+Update But set AssistJoueurID = null where AssistJoueurID = ButJoueurID
+
+---------------------------------------------------------Alteration des tables---------------------------------------------------------
+ALTER TABLE Joueur
+ADD Adresse VARCHAR(100) NOT NULL; -- Ajout de la colonne Adresse
+
+ALTER TABLE Tuteur
+DROP COLUMN Adresse; -- Suppression de la colonne Adresse
+
+ALTER TABLE Tuteur
+ADD Ville VARCHAR(50) NOT NULL; -- Ajout de la colonne Ville
+
+ALTER TABLE Joueur
+ADD CONSTRAINT ck_joueur_position CHECK (Position IN ('Attaquant', 'Défenseur', 'Gardien')); -- Ajout de la contrainte de verification de la position
+
+ALTER TABLE Joueur
+DROP CONSTRAINT ck_joueur_position; -- Suppression de la contrainte de verification de la position
+ALTER TABLE Joueur
+ADD CONSTRAINT ck_joueur_position CHECK (Position IN ('Attaquant', 'Défenseur', 'Gardien', 'Milieu')); -- Ajout de la contrainte de verification de la position
+
+-- ALTER TABLE Equipe
+-- DROP COLUMN Classement;
+
+ALTER TABLE Equipe
+ADD AnneeFondation INT NOT NULL; -- Ajout de la colonne AnneeFondation
+GO
+
+ALTER TABLE Equipe
+ALTER COLUMN AnneeFondation CHAR(4); -- Changement du type de donnees de AnneeFondation
+
+ALTER TABLE Equipe
+ADD CONSTRAINT ck_equipe_anneefondation CHECK (AnneeFondation >= 0); -- Ajout de la contrainte de verification de AnneeFondation
+
+-- ALTER TABLE Match
+-- ADD CONSTRAINT ck_match_niveau CHECK (Niveau IN ('Amical', 'Ligue', 'Tournoi'));
+
+ALTER TABLE Match
+DROP CONSTRAINT ck_match_statut;
+ALTER TABLE Match
+ADD CONSTRAINT ck_match_statut CHECK (Statut IN ('Planifié', 'EnCours', 'Terminé', 'Annulé')); -- Changement de la contrainte de verification de Statut
+
+ALTER TABLE But
+ADD Commentaire VARCHAR(255); -- Ajout de la colonne Commentaire
+
+-- pour supprimer la contrainte de cle etrangere fk_but_assistjoueur
+DECLARE @ConstraintName nvarchar(200)
+SELECT @ConstraintName = Name FROM SYS.DEFAULT_CONSTRAINTS WHERE PARENT_OBJECT_ID = OBJECT_ID('But') AND PARENT_COLUMN_ID = (SELECT column_id FROM sys.columns WHERE NAME = N'AssistJoueurID' AND object_id = OBJECT_ID('But'))
+IF @ConstraintName IS NOT NULL
+    EXEC('ALTER TABLE But DROP CONSTRAINT ' + @ConstraintName)
+-- pour supprimer la colonne AssistJoueurID
+ALTER TABLE But
+DROP CONSTRAINT fk_but_assistjoueur;
+
+ALTER TABLE But
+DROP COLUMN AssistJoueurID; -- Suppression de la colonne AssistJoueurID
+
+ALTER TABLE Ligue
+ALTER COLUMN Description TEXT NOT NULL; -- Changement du type de donnees de Description
+
+ALTER TABLE Ligue
+ALTER COLUMN NomLigue VARCHAR(100) NOT NULL; -- Changement du type de donnees de NomLigue
+
+ALTER TABLE Ligue
+ADD DateDebut DATE NOT NULL; -- Ajout de la colonne DateDebut
+
+
+
+
+-- delete from Entraineur where DateNaissance <= DATEADD(Year, -18, getdate())
+
+-- Delete from tuteur where DateNaissance <= DATEADD(Year, -18, getdate())
+
+
 
 ---------------------------------------------------------Effacement de la base de donnees---------------------------------------------------------
 USE master;
