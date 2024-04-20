@@ -350,7 +350,7 @@ ADD DateDebut DATE NOT NULL; -- Ajout de la colonne DateDebut
 
 
 
--- delete from Entraineur where DateNaissance <= DATEADD(Year, -18, getdate())
+--- delete from Entraineur where DateNaissance <= DATEADD(Year, -18, getdate())
 
 -- Delete from tuteur where DateNaissance <= DATEADD(Year, -18, getdate())
 
